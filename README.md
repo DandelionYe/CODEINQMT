@@ -201,7 +201,11 @@ See `configs/README.md` for full documentation.
 
 ## License
 
-MIT License
+All Rights Reserved.
+
+This repository is publicly visible for reference and educational review only. No permission is granted to copy, modify, distribute, sublicense, sell, host, integrate, or use this software for commercial, production, trading, or service purposes without prior written permission.
+
+This project does not provide financial advice, investment advice, trading signals, brokerage integration, market data, broker documents, credentials, or production trading configuration.
 
 ## Disclaimer
 
