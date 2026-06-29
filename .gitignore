@@ -106,3 +106,21 @@ scripts/ccqmt_mimo_ultra.ps1
 *.xls
 *.joblib
 *.model
+
+# Additional secret-like filenames
+*token*
+*secret*
+*credential*
+
+# Additional database / array / model artifacts
+*.db
+*.sqlite
+*.sqlite3
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.feather
+
+# Generated HTML reports / scraped pages
+*.html

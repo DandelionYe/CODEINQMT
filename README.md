@@ -180,7 +180,7 @@ portfolio_backtest  -> portfolio_backtest_dir
 
 This framework is designed to work with QMT-exported CSV data. The strategies and pipeline scripts read standard OHLCV CSV files.
 
-**Note:** QMT (迅投极速策略交易系统) is a third-party trading platform. This repository does not include QMT software, API documentation, or broker-specific configurations. Users should obtain QMT from their broker through legitimate channels.
+**Note:** QMT (QMT-compatible trading terminal) is a third-party trading platform. This repository does not include QMT software, API documentation, or broker-specific configurations. Users should obtain QMT from their broker through legitimate channels.
 
 The `strategies/ma_demo_strategy.py` file demonstrates direct xtquant API usage for data download, but the main research pipeline (`scripts/`) works purely with local CSV/Parquet files.
 
@@ -201,7 +201,7 @@ See `configs/README.md` for full documentation.
 
 ## License
 
-[Specify your license here]
+MIT License
 
 ## Disclaimer
 
