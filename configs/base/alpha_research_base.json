@@ -1,0 +1,22 @@
+{
+  "_description": "Alpha 研究实验默认基线配置。继承 walk_forward_default 和 cost_model_a_share_default。",
+  "_updated_at": "2026-06-07",
+  "_inherits": [
+    "cost_model_a_share_default",
+    "walk_forward_default"
+  ],
+  "universe": {
+    "market": "ALL",
+    "security_type": "stock",
+    "data_source": "QMT CSV export",
+    "export_root": "data/qmt_export"
+  },
+  "date_range": {
+    "train_start": "20150101",
+    "incomplete_year": 2026
+  },
+  "parameters": {
+    "benchmark_list": ["000300.SH", "000905.SH", "000852.SH"],
+    "benchmark_ma_list": [120, 250]
+  }
+}

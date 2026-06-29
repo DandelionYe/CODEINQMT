@@ -1,0 +1,11 @@
+# CODEINQMT 主流水线依赖
+# 安装: pip install -r requirements.txt
+#
+# 注意: xtquant 不在此列，它是 QMT 券商专用包，不在 PyPI 上，
+#       仅用于 live-data 功能，CSV 工作流不需要。
+
+numpy
+pandas
+matplotlib
+pyarrow
+jsonschema

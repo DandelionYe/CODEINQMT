@@ -1,0 +1,10 @@
+{
+  "_description": "A 股默认成本模型。所有实验可继承此配置。",
+  "_updated_at": "2026-06-07",
+  "cost_model": {
+    "cash": 1000000,
+    "commission": 0.0001,
+    "sell_tax": 0.0005,
+    "slippage": 0.0
+  }
+}

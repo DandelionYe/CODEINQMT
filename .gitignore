@@ -1,0 +1,108 @@
+# Secrets / credentials
+.claude/
+.env
+.env.*
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# IDE / local environment
+.vscode/
+.idea/
+.conda/
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs / temp
+logs/
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# Real market data - never publish
+data/qmt_export/
+data/qmt_parquet/
+data/qmt_export_catalog.csv
+data/**/*.csv
+data/**/*.parquet
+data/**/*.pkl
+data/**/*.pickle
+data/**/*.duckdb
+
+# Keep data docs
+!data/
+!data/README.md
+
+# Backtest outputs - never publish full results
+backtests/*
+!backtests/
+!backtests/README.md
+
+# Factor raw / processed data
+factors/STK_LISTEDCOINFOANL.csv
+factors/processed/
+factors/concept_industry/raw/
+factors/concept_industry/parquet/
+factors/concept_industry/ths_concept_industry.duckdb
+factors/concept_industry/.venv/
+factors/**/*.csv
+factors/**/*.parquet
+factors/**/*.duckdb
+factors/**/*.pkl
+factors/**/*.pickle
+
+# Keep factor docs and scripts
+!factors/
+!factors/README.md
+!factors/concept_industry/
+!factors/concept_industry/README.md
+!factors/concept_industry/FACTOR_REGISTRY.md
+!factors/concept_industry/STATUS.md
+!factors/concept_industry/scripts/
+!factors/concept_industry/scripts/**
+
+# Broker / vendor documents - never publish
+Guidance/
+QMTAPI/
+
+# Local review / accidental directories
+local_review_archive/
+$HOME/
+-Force/
+
+# External source copies
+Tools/qlib/
+
+# Local machine scripts
+scripts/ccqmt_mimo_ultra.ps1
+
+# Binary / large artifacts
+*.exe
+*.dll
+*.pyd
+*.so
+*.dylib
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.pdf
+*.xlsx
+*.xls
+*.joblib
+*.model

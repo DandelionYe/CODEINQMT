@@ -1,0 +1,18 @@
+{
+  "_description": "Walk-forward 验证默认参数。所有实验可继承此配置。",
+  "_updated_at": "2026-06-07",
+  "date_range": {
+    "first_test_year": 2021,
+    "last_test_year": 2025
+  },
+  "parameters": {
+    "portfolio_size": 20,
+    "min_train_rows": 1000,
+    "min_train_trades": 4,
+    "max_train_drawdown": -0.55,
+    "min_train_sharpe": 0.2,
+    "min_train_annual_return": 0.02,
+    "train_excess_mode": "stock_only",
+    "allow_negative_train_excess": false
+  }
+}

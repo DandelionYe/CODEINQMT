@@ -1,0 +1,519 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Research Experiments Registry",
+  "description": "Schema for structured experiment registration in the CODEINQMT quantitative research system.",
+  "type": "object",
+  "required": ["schema_version", "updated_at", "experiments"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version for forward compatibility.",
+      "examples": ["1.0"]
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "Last update date in YYYY-MM-DD format.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "experiments": {
+      "type": "array",
+      "description": "List of registered research experiments.",
+      "items": {
+        "$ref": "#/definitions/experiment"
+      }
+    }
+  },
+  "definitions": {
+    "experiment": {
+      "type": "object",
+      "required": [
+        "experiment_id",
+        "status",
+        "strategy_family",
+        "strategy_version",
+        "strategy_name",
+        "hypothesis",
+        "signal_definition",
+        "commands",
+        "outputs",
+        "decision"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "experiment_id": {
+          "type": "string",
+          "description": "Unique experiment identifier.",
+          "examples": ["exp_002_ma_cross_with_market_filter"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Current lifecycle status of the experiment.",
+          "enum": ["planned", "running", "completed", "diagnosed", "abandoned", "promoted"]
+        },
+        "strategy_family": {
+          "type": "string",
+          "description": "High-level strategy category.",
+          "examples": ["ma_cross", "momentum", "mean_reversion"]
+        },
+        "strategy_version": {
+          "type": "string",
+          "description": "Version tag within the strategy family.",
+          "examples": ["v1", "v2", "v3"]
+        },
+        "strategy_name": {
+          "type": "string",
+          "description": "Human-readable strategy name."
+        },
+        "hypothesis": {
+          "type": "string",
+          "description": "The research hypothesis being tested."
+        },
+        "signal_definition": {
+          "type": "object",
+          "description": "Trading signal logic.",
+          "required": ["entry_signal", "exit_signal", "market_filter", "ranking_metric", "portfolio_construction"],
+          "additionalProperties": true,
+          "properties": {
+            "entry_signal": {
+              "type": "string",
+              "description": "Condition to enter a position."
+            },
+            "exit_signal": {
+              "type": "string",
+              "description": "Condition to exit a position."
+            },
+            "market_filter": {
+              "type": "string",
+              "description": "Market-level filter condition."
+            },
+            "ranking_metric": {
+              "type": "string",
+              "description": "Metric used to rank and select securities."
+            },
+            "portfolio_construction": {
+              "type": "string",
+              "description": "How the portfolio is constructed from ranked securities."
+            }
+          }
+        },
+        "universe": {
+          "type": "object",
+          "description": "Security universe definition. Can be inherited from base_config when present.",
+          "additionalProperties": true,
+          "properties": {
+            "market": {
+              "type": "string",
+              "description": "Market scope (e.g., ALL, SH, SZ)."
+            },
+            "security_type": {
+              "type": "string",
+              "description": "Type of securities (e.g., stock, index, etf)."
+            },
+            "data_source": {
+              "type": "string",
+              "description": "Source of market data."
+            },
+            "export_root": {
+              "type": "string",
+              "description": "Root directory for raw data exports."
+            }
+          }
+        },
+        "date_range": {
+          "type": "object",
+          "description": "Training and testing date ranges. Fields can be inherited from base_config when present.",
+          "additionalProperties": true,
+          "properties": {
+            "train_start": {
+              "type": "string",
+              "description": "Start date for training data (YYYYMMDD)."
+            },
+            "first_test_year": {
+              "type": ["integer", "string"],
+              "description": "First year of out-of-sample testing."
+            },
+            "last_test_year": {
+              "type": ["integer", "string"],
+              "description": "Last year of testing (integer or 'latest')."
+            },
+            "incomplete_year": {
+              "type": ["integer", "string", "null"],
+              "description": "Year with incomplete data that should be flagged."
+            }
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Strategy parameters and training filters. Common fields (benchmark_list, portfolio_size, etc.) can be inherited from base_config when present. Strategy-specific fields are optional depending on strategy_version.",
+          "additionalProperties": true,
+          "properties": {
+            "benchmark_list": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "List of benchmark index codes."
+            },
+            "portfolio_size": {
+              "type": "integer",
+              "description": "Number of securities in the portfolio."
+            },
+            "min_train_rows": {
+              "type": "integer",
+              "description": "Minimum training data rows required."
+            },
+            "min_train_trades": {
+              "type": "integer",
+              "description": "Minimum trades during training period."
+            },
+            "max_train_drawdown": {
+              "type": "number",
+              "description": "Maximum allowed training period drawdown (negative)."
+            },
+            "min_train_sharpe": {
+              "type": "number",
+              "description": "Minimum training period Sharpe ratio."
+            },
+            "min_train_annual_return": {
+              "type": "number",
+              "description": "Minimum training period annual return."
+            },
+            "train_excess_mode": {
+              "type": "string",
+              "description": "How excess return is calculated during training."
+            },
+            "allow_negative_train_excess": {
+              "type": "boolean",
+              "description": "Whether to allow candidates with negative training excess return."
+            },
+            "fast_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v2: List of fast MA periods."
+            },
+            "slow_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v2: List of slow MA periods."
+            },
+            "benchmark_fast_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v2: List of fast MA periods for benchmark filter."
+            },
+            "benchmark_slow_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v2: List of slow MA periods for benchmark filter."
+            },
+            "ma_mid_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v3: List of mid-term MA periods."
+            },
+            "ma_long_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v3: List of long-term MA periods."
+            },
+            "momentum_window_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v3: List of momentum calculation windows."
+            },
+            "benchmark_ma_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "MA v3 / Alpha v4: List of benchmark regime filter MA periods."
+            },
+            "alpha_variant_list": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Alpha v4: List of alpha signal variants to test."
+            },
+            "trend_ma_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Alpha v4: List of trend MA periods for simplified_trend_momentum."
+            },
+            "vol_window_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Alpha v4: List of volatility calculation windows."
+            },
+            "breakout_window_list": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Alpha v4: List of breakout lookback windows."
+            }
+          }
+        },
+        "cost_model": {
+          "type": "object",
+          "description": "Trading cost assumptions. Can be inherited from base_config when present.",
+          "additionalProperties": true,
+          "properties": {
+            "cash": {
+              "type": "number",
+              "description": "Initial cash amount."
+            },
+            "commission": {
+              "type": "number",
+              "description": "Commission rate (e.g., 0.0001 = 0.01%)."
+            },
+            "sell_tax": {
+              "type": "number",
+              "description": "Sell-side tax rate."
+            },
+            "slippage": {
+              "type": "number",
+              "description": "Slippage rate."
+            }
+          }
+        },
+        "commands": {
+          "type": "object",
+          "description": "Reproducible run commands for each pipeline stage.",
+          "required": ["single_symbol_check", "batch_backtest", "walk_forward", "analysis", "diagnosis"],
+          "additionalProperties": true,
+          "properties": {
+            "single_symbol_check": {
+              "type": ["string", "array"],
+              "items": { "type": "string" },
+              "description": "Command(s) for single-symbol validation."
+            },
+            "batch_backtest": {
+              "type": ["string", "array"],
+              "items": { "type": "string" },
+              "description": "Command(s) for batch backtesting."
+            },
+            "walk_forward": {
+              "type": ["string", "array"],
+              "items": { "type": "string" },
+              "description": "Command(s) for walk-forward validation."
+            },
+            "analysis": {
+              "type": ["string", "array"],
+              "items": { "type": "string" },
+              "description": "Command(s) for result analysis."
+            },
+            "diagnosis": {
+              "type": ["string", "array"],
+              "items": { "type": "string" },
+              "description": "Command(s) for strategy diagnosis."
+            }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Output directories for each pipeline stage.",
+          "required": ["single_symbol_dir", "batch_dir", "walk_forward_dir", "analysis_dir", "diagnosis_dir"],
+          "additionalProperties": true,
+          "properties": {
+            "single_symbol_dir": {
+              "type": "string",
+              "description": "Directory for single-symbol backtest output."
+            },
+            "batch_dir": {
+              "type": "string",
+              "description": "Directory for batch backtest output."
+            },
+            "walk_forward_dir": {
+              "type": "string",
+              "description": "Directory for walk-forward output."
+            },
+            "analysis_dir": {
+              "type": "string",
+              "description": "Directory for analysis output."
+            },
+            "diagnosis_dir": {
+              "type": "string",
+              "description": "Directory for diagnosis output."
+            }
+          }
+        },
+        "key_results": {
+          "type": ["object", "null"],
+          "description": "Quantitative results from the experiment. Nullable for planned experiments.",
+          "additionalProperties": true,
+          "properties": {
+            "total_return": {
+              "type": ["number", "null"],
+              "description": "Total portfolio return."
+            },
+            "annual_return": {
+              "type": ["number", "null"],
+              "description": "Annualized return."
+            },
+            "max_drawdown": {
+              "type": ["number", "null"],
+              "description": "Maximum drawdown."
+            },
+            "sharpe": {
+              "type": ["number", "null"],
+              "description": "Sharpe ratio."
+            },
+            "benchmark_excess": {
+              "type": ["object", "null"],
+              "description": "Excess return vs each benchmark.",
+              "additionalProperties": { "type": "number" }
+            },
+            "train_good_test_bad_rate": {
+              "type": ["number", "null"],
+              "description": "Fraction of train-good selections that fail in test."
+            },
+            "stable_parameter_count": {
+              "type": ["integer", "null"],
+              "description": "Number of parameter combinations with stable OOS performance."
+            },
+            "bad_contributor_count": {
+              "type": ["integer", "null"],
+              "description": "Number of stocks classified as bad contributors."
+            },
+            "good_contributor_count": {
+              "type": ["integer", "null"],
+              "description": "Number of stocks classified as good contributors."
+            }
+          }
+        },
+        "diagnosis_summary": {
+          "type": ["object", "null"],
+          "description": "Summary of strategy diagnosis. Nullable for experiments not yet diagnosed.",
+          "additionalProperties": true,
+          "properties": {
+            "main_findings": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Key findings from diagnosis."
+            },
+            "recommendation": {
+              "type": "string",
+              "description": "Diagnosis recommendation."
+            },
+            "proceed_to_portfolio_backtest": {
+              "type": "boolean",
+              "description": "Whether the experiment is ready for portfolio backtest."
+            },
+            "next_action": {
+              "type": "string",
+              "description": "Suggested next step."
+            }
+          }
+        },
+        "decision": {
+          "type": "object",
+          "description": "Research decision on this experiment.",
+          "required": ["decision", "reason", "decided_at", "owner"],
+          "additionalProperties": true,
+          "properties": {
+            "decision": {
+              "type": "string",
+              "description": "Decision outcome.",
+              "enum": ["continue", "revise", "revise_alpha_signal", "abandon", "promote_to_portfolio_backtest", "promote_to_simulation"]
+            },
+            "reason": {
+              "type": "string",
+              "description": "Rationale for the decision."
+            },
+            "decided_at": {
+              "type": "string",
+              "description": "Date of decision (YYYY-MM-DD)."
+            },
+            "owner": {
+              "type": "string",
+              "description": "Person or role that made the decision."
+            }
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form notes about the experiment."
+        },
+        "base_config": {
+          "type": "string",
+          "description": "Name of a base config file in configs/base/ to inherit from. Experiment-specific fields override base fields."
+        },
+        "task": {
+          "type": "object",
+          "description": "Structured task configuration for the experiment. Coexists with commands; pipeline prefers commands until a stage supports task.",
+          "additionalProperties": true,
+          "properties": {
+            "data": {
+              "type": "object",
+              "description": "Data handler configuration.",
+              "properties": {
+                "handler": { "type": "string", "description": "DataHandler class name." },
+                "universe": { "type": "string", "description": "Universe scope." },
+                "start": { "type": "string", "description": "Start date (YYYYMMDD)." },
+                "end": { "type": "string", "description": "End date (YYYYMMDD)." }
+              }
+            },
+            "features": {
+              "type": "object",
+              "description": "Feature expression configuration.",
+              "properties": {
+                "factor_set_id": { "type": "string", "description": "Factor set identifier from factor_registry.json." }
+              }
+            },
+            "labels": {
+              "type": "object",
+              "description": "Label construction configuration.",
+              "properties": {
+                "horizons": {
+                  "type": "array",
+                  "items": { "type": "integer" },
+                  "description": "Forward return horizons in trading days."
+                }
+              }
+            },
+            "signal": {
+              "type": "object",
+              "description": "Signal generation configuration.",
+              "properties": {
+                "type": { "type": "string", "enum": ["rule", "ml"], "description": "Signal type." },
+                "variants": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Alpha variant names."
+                }
+              }
+            },
+            "walk_forward": {
+              "type": "object",
+              "description": "Walk-forward validation parameters.",
+              "properties": {
+                "first_test_year": { "type": "integer" },
+                "last_test_year": { "type": ["integer", "string"] },
+                "portfolio_size": { "type": "integer" }
+              }
+            },
+            "evaluation": {
+              "type": "object",
+              "description": "Signal evaluation configuration.",
+              "properties": {
+                "signal_ic": { "type": "boolean", "description": "Whether to compute IC/RankIC." }
+              }
+            },
+            "backtest": {
+              "type": "object",
+              "description": "Backtest configuration.",
+              "properties": {
+                "cost_model": { "type": "string", "description": "Cost model name from configs/base/." }
+              }
+            },
+            "records": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Record Template names to apply."
+            }
+          }
+        }
+      },
+      "if": {
+        "not": { "required": ["base_config"] }
+      },
+      "then": {
+        "required": ["universe", "date_range", "parameters", "cost_model"]
+      }
+    }
+  }
+}

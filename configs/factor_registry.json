@@ -1,0 +1,97 @@
+{
+  "_comment": "因子文本声明。运行时实际构建由 alpha_v7_research_strategy_csv.build_expression() 执行。两者数学一致。",
+  "version": "1.0",
+  "updated": "2026-06-07",
+  "description": "因子注册表：登记所有 alpha 因子的表达式、参数、语义。",
+  "factors": [
+    {
+      "factor_id": "alpha_v6_short_term_reversal",
+      "display_name": "短期反转",
+      "expression": "Neg(PctChange(Field('close'), reversal_window))",
+      "inputs": ["close"],
+      "params": {
+        "reversal_window": {
+          "default": 10,
+          "candidates": [5, 10, 20],
+          "description": "反转计算窗口（交易日）"
+        }
+      },
+      "frequency": "daily",
+      "data_scope": "single_stock",
+      "pit_safe": true,
+      "lookback": 20,
+      "direction": "positive",
+      "owner_strategy": "alpha_v6",
+      "variant": "short_term_reversal",
+      "notes": "短期反转效应：过去 N 日跌幅越大，未来收益越高。raw_alpha_score = -pct_change(close, N)。"
+    },
+    {
+      "factor_id": "alpha_v6_low_volatility",
+      "display_name": "低波动异象",
+      "expression": "Neg(RollingStd(PctChange(Field('close'), 1), vol_window) * sqrt(252))",
+      "inputs": ["close"],
+      "params": {
+        "vol_window": {
+          "default": 60,
+          "candidates": [20, 60, 120],
+          "description": "波动率计算窗口（交易日）"
+        }
+      },
+      "frequency": "daily",
+      "data_scope": "single_stock",
+      "pit_safe": true,
+      "lookback": 120,
+      "direction": "positive",
+      "owner_strategy": "alpha_v6",
+      "variant": "low_volatility",
+      "notes": "低波动异象：低波动股票得分高。alpha_signal 始终为 1，靠排序选股。"
+    },
+    {
+      "factor_id": "alpha_v6_turnover_reversal",
+      "display_name": "换手率反转",
+      "expression": "Neg(RollingMean(Field('volume'), turnover_short) / RollingMean(Field('volume'), turnover_long) - 1)",
+      "inputs": ["volume"],
+      "params": {
+        "turnover_short": {
+          "default": 10,
+          "candidates": [5, 10, 20],
+          "description": "换手率短期均值窗口"
+        },
+        "turnover_long": {
+          "default": 60,
+          "candidates": [20, 60, 120],
+          "description": "换手率长期均值窗口"
+        }
+      },
+      "frequency": "daily",
+      "data_scope": "single_stock",
+      "pit_safe": true,
+      "lookback": 120,
+      "direction": "positive",
+      "owner_strategy": "alpha_v6",
+      "variant": "turnover_reversal",
+      "notes": "换手率反转：换手率低于长期均值时得分高。raw_alpha_score = -(turnover_ratio - 1)。"
+    },
+    {
+      "factor_id": "alpha_v6_volume_price_divergence",
+      "display_name": "量价背离",
+      "expression": "ZScore(PctChange(Field('close'), divergence_window)) - ZScore(PctChange(Field('volume'), divergence_window))",
+      "inputs": ["close", "volume"],
+      "params": {
+        "divergence_window": {
+          "default": 20,
+          "candidates": [10, 20, 40],
+          "description": "量价趋势计算窗口"
+        }
+      },
+      "frequency": "daily",
+      "data_scope": "single_stock",
+      "pit_safe": true,
+      "lookback": 40,
+      "direction": "positive",
+      "owner_strategy": "alpha_v6",
+      "variant": "volume_price_divergence",
+      "notes": "量价背离：价涨量跌时得分高。alpha_signal = (price_trend > 0) & (volume_trend < 0)。"
+    }
+  ]
+}

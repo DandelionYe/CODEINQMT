@@ -1,0 +1,469 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-06-07",
+  "experiments": [
+    {
+      "experiment_id": "exp_002_ma_cross_with_market_filter",
+      "base_config": "alpha_research_base",
+      "status": "diagnosed",
+      "strategy_family": "ma_cross",
+      "strategy_version": "v2",
+      "strategy_name": "MA v2 - stock MA crossover with market trend filter",
+      "hypothesis": "A股部分股票存在中长期趋势延续，个股均线交叉可以捕捉趋势；加入大盘趋势过滤后应减少弱市暴露和回撤。",
+      "signal_definition": {
+        "entry_signal": "stock_fast_ma > stock_slow_ma AND market_filter == 1",
+        "exit_signal": "stock_fast_ma <= stock_slow_ma OR market_filter == 0",
+        "market_filter": "benchmark_fast_ma > benchmark_slow_ma",
+        "ranking_metric": "train_score from validate_ma_market_filter_candidates.py",
+        "portfolio_construction": "annual walk-forward selection, top N equal-weight daily return aggregation"
+      },
+      "date_range": {
+        "last_test_year": "latest"
+      },
+      "parameters": {
+        "fast_list": [5, 10, 20],
+        "slow_list": [60, 120, 250],
+        "benchmark_fast_list": [20],
+        "benchmark_slow_list": [120]
+      },
+      "commands": {
+        "single_symbol_check": "python strategies\\ma_market_filter_strategy_csv.py --stock 000001.SZ --benchmark 000300.SH --fast 20 --slow 120 --benchmark-fast 20 --benchmark-slow 120 --start 20150101",
+        "batch_backtest": "python scripts\\batch_ma_market_filter_backtest_csv.py --market ALL --security-type stock --fast-list 5,10,20 --slow-list 60,120,250 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-fast-list 20 --benchmark-slow-list 120 --start 20150101 --sample-mode short",
+        "walk_forward": "python scripts\\validate_ma_market_filter_candidates.py --market ALL --security-type stock --first-test-year 2021 --portfolio-size 20 --fast-list 5,10,20 --slow-list 60,120,250 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-fast-list 20 --benchmark-slow-list 120",
+        "analysis": "python scripts\\analyze_ma_market_filter_walk_forward_results.py",
+        "diagnosis": "python scripts\\diagnose_ma_market_filter_strategy_results.py --run-id exp002_ma_mf_diagnosis"
+      },
+      "outputs": {
+        "single_symbol_dir": "backtests/ma_market_filter_strategy_csv",
+        "batch_dir": "backtests/batch_ma_market_filter_csv",
+        "walk_forward_dir": "backtests/walk_forward_ma_market_filter_csv",
+        "analysis_dir": "backtests/walk_forward_ma_market_filter_analysis",
+        "diagnosis_dir": "backtests/strategy_diagnosis/ma_mf_diagnosis_exp002_ma_mf_diagnosis",
+        "robustness_dir": null,
+        "portfolio_backtest_dir": null
+      },
+      "key_results": {
+        "total_return": -0.194224,
+        "annual_return": -0.041121,
+        "max_drawdown": -0.295110,
+        "sharpe": -0.302482,
+        "benchmark_excess": {
+          "000300.SH": -0.127189,
+          "000905.SH": -0.531636,
+          "000852.SH": -0.485445
+        },
+        "train_good_test_bad_rate": 0.62,
+        "stable_parameter_count": 0,
+        "bad_contributor_count": 47,
+        "good_contributor_count": 15
+      },
+      "diagnosis_summary": {
+        "main_findings": [
+          "Strategy has negative annual return (-4.11%) and negative Sharpe (-0.30).",
+          "Training score has near-zero predictive power for test returns (correlation 0.017).",
+          "No fast/slow parameter combination is stable out-of-sample (0/9 stable).",
+          "Market filter does not produce positive average test returns for any benchmark.",
+          "Bad contributors (47) substantially outnumber good contributors (15)."
+        ],
+        "recommendation": "Do not proceed to portfolio_backtest_csv.py. Fix alpha signal first.",
+        "proceed_to_portfolio_backtest": false,
+        "next_action": "Design MA v3 or alternative alpha signal before adding real portfolio constraints."
+      },
+      "decision": {
+        "decision": "revise",
+        "reason": "MA v2 completed research loop but failed viability thresholds; do not promote to portfolio backtest.",
+        "decided_at": "2026-05-16",
+        "owner": "user"
+      },
+      "notes": "MA v1 is no longer an active development path. Future work should use this registry for MA v2 descendants and new strategies."
+    },
+    {
+      "experiment_id": "exp_003_ma_v3_momentum_trend_filter",
+      "base_config": "alpha_research_base",
+      "status": "diagnosed",
+      "strategy_family": "ma_momentum",
+      "strategy_version": "v3",
+      "strategy_name": "MA v3 - momentum trend strength with market regime filter",
+      "hypothesis": "MA v2 的简单 fast_ma > slow_ma 交叉信号 alpha 不足。MA v3 改用趋势确认（close > ma_long AND ma_mid > ma_long AND ma_long_slope > 0）+ 动量/强度评分（trend_strength + momentum_return + trend_slope）排序选股，预期改善 train-test 一致性和参数稳定性。",
+      "signal_definition": {
+        "entry_signal": "trend_confirm=1 AND market_filter=1, ranked by train_score",
+        "exit_signal": "trend_confirm=0 OR market_filter=0",
+        "market_filter": "benchmark_ma_short > benchmark_ma_long (regime filter, non-core alpha)",
+        "ranking_metric": "train_score = zscore(trend_strength) + zscore(momentum_return) + zscore(ma_long_slope)",
+        "portfolio_construction": "annual walk-forward selection, top N equal-weight daily return aggregation"
+      },
+      "parameters": {
+        "ma_mid_list": [20, 60],
+        "ma_long_list": [120, 250],
+        "momentum_window_list": [60, 120],
+        "max_train_volatility": 0.0,
+        "min_train_calmar": 0.0
+      },
+      "commands": {
+        "single_symbol_check": "python strategies\\ma_v3_momentum_strategy_csv.py --stock 000001.SZ --benchmark 000300.SH --ma-mid 60 --ma-long 250 --momentum-window 120 --benchmark-ma 120 --start 20150101",
+        "batch_backtest": "python scripts\\batch_ma_v3_momentum_backtest_csv.py --market ALL --security-type stock --ma-mid-list 20,60 --ma-long-list 120,250 --momentum-window-list 60,120 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --start 20150101 --sample-mode short",
+        "walk_forward": "python scripts\\validate_ma_v3_momentum_candidates.py --market ALL --security-type stock --first-test-year 2021 --last-test-year 2025 --portfolio-size 20 --ma-mid-list 20,60 --ma-long-list 120,250 --momentum-window-list 60,120 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --workers 10 --progress-every 100",
+        "analysis": "python scripts\\analyze_ma_v3_momentum_walk_forward_results.py --input-tag v3_mom_ALL_stock_ts20150101_fy2021-2025_mid20_60_long120_250_mom60_120_bm000300SH_000905SH_000852SH_bma120_250_top20_limitALL",
+        "diagnosis": "python scripts\\diagnose_ma_v3_momentum_strategy_results.py --run-id exp003_ma_v3_momentum_full --input-tag v3_mom_ALL_stock_ts20150101_fy2021-2025_mid20_60_long120_250_mom60_120_bm000300SH_000905SH_000852SH_bma120_250_top20_limitALL"
+      },
+      "outputs": {
+        "single_symbol_dir": "backtests/ma_v3_momentum_strategy_csv",
+        "batch_dir": "backtests/batch_ma_v3_momentum_csv",
+        "walk_forward_dir": "backtests/walk_forward_ma_v3_momentum_csv",
+        "walk_forward_input_tag": "v3_mom_ALL_stock_ts20150101_fy2021-2025_mid20_60_long120_250_mom60_120_bm000300SH_000905SH_000852SH_bma120_250_top20_limitALL",
+        "analysis_dir": "backtests/walk_forward_ma_v3_momentum_analysis",
+        "diagnosis_dir": "backtests/strategy_diagnosis/ma_v3_momentum_diagnosis_exp003_ma_v3_momentum_full",
+        "robustness_dir": null,
+        "portfolio_backtest_dir": null
+      },
+      "key_results": {
+        "total_return": 0.0846,
+        "annual_return": 0.0170,
+        "max_drawdown": -0.2020,
+        "sharpe": 0.225,
+        "benchmark_excess": {
+          "000300.SH": 0.1962,
+          "000905.SH": -0.0879,
+          "000852.SH": -0.0581
+        },
+        "train_good_test_bad_rate": 0.30,
+        "stable_parameter_count": 0,
+        "bad_contributor_count": 34,
+        "good_contributor_count": 9
+      },
+      "diagnosis_summary": {
+        "main_findings": [
+          "Strategy has positive total return (8.46%) but low annualized return (1.70%) and low Sharpe (0.225).",
+          "4 out of 5 test years lost money; only 2025 had strong positive return (+25.65%).",
+          "30% of train-good selections failed in test (train_good_test_bad_rate = 0.30).",
+          "0 out of 4 parameter combinations are stable out-of-sample.",
+          "train_score correlation with test_total_return is weak (r=0.18).",
+          "Excess vs CSI300 is +19.6%, but underperforms CSI500 (-8.8%) and CSI1000 (-5.8%).",
+          "Bad contributors (34) substantially outnumber good contributors (9)."
+        ],
+        "recommendation": "Do not proceed to portfolio_backtest_csv.py. Strategy has positive but low returns, high train-test gap, and no stable parameters.",
+        "proceed_to_portfolio_backtest": false,
+        "next_action": "Revise signal logic: simplify trend confirmation conditions, try pure momentum without trend gate, or explore alternative scoring formulas."
+      },
+      "decision": {
+        "decision": "revise",
+        "reason": "MA v3 completed full walk-forward (2021-2025). Positive total return (8.46%) but low annualized (1.70%), low Sharpe (0.225), 4/5 years negative, 30% train-good-test-bad rate, 0 stable parameters. Not viable for portfolio backtest.",
+        "decided_at": "2026-05-17",
+        "owner": "user"
+      },
+      "notes": "MA v3 改用动量/趋势强度评分替代 MA v2 的简单交叉信号。full run 结果：总收益 8.46% 但年化仅 1.70%，Sharpe 0.225，5 年中 4 年亏损，仅 2025 年贡献全部收益。train-test 一致性仍差（30% good-bad rate），参数不稳定（0 stable）。需要 revise。"
+    },
+    {
+      "experiment_id": "exp_004_next_alpha_research",
+      "base_config": "alpha_research_base",
+      "status": "diagnosed",
+      "strategy_family": "alpha_research",
+      "strategy_version": "v4",
+      "strategy_name": "Alpha v4 - next generation alpha signal research with multiple variants",
+      "hypothesis": "MA v3 的趋势确认条件过于严格（close > ma_long AND ma_mid > ma_long AND ma_long_slope > 0），导致信号稀疏且依赖单一趋势逻辑。Alpha v4 测试 4 种不同 alpha 信号变体（pure_momentum、simplified_trend_momentum、volatility_adjusted_momentum、breakout_momentum），用于信号消融和方向比较，寻找 MA v3 之后更有效的 alpha 来源。",
+      "signal_definition": {
+        "entry_signal": "alpha_variant specific: pure_momentum uses momentum_return > 0; simplified_trend_momentum uses (close > ma_long OR ma_mid > ma_long); volatility_adjusted_momentum uses momentum/realized_vol > 0; breakout_momentum uses close near rolling_high",
+        "exit_signal": "alpha_signal = 0 OR market_filter = 0",
+        "market_filter": "benchmark_ma_short > benchmark_ma_long (regime filter)",
+        "ranking_metric": "alpha_score = normalize(raw_alpha_score)",
+        "portfolio_construction": "annual walk-forward selection, top N equal-weight daily return aggregation"
+      },
+      "parameters": {
+        "alpha_variant_list": ["pure_momentum", "simplified_trend_momentum", "volatility_adjusted_momentum", "breakout_momentum"],
+        "momentum_window_list": [60, 120, 250],
+        "trend_ma_list": [120, 250],
+        "vol_window_list": [60, 120],
+        "breakout_window_list": [60, 120, 250]
+      },
+      "commands": {
+        "single_symbol_check": "python strategies\\alpha_v4_research_strategy_csv.py --stock 000001.SZ --benchmark 000300.SH --alpha-variant pure_momentum --momentum-window 120 --trend-ma 250 --vol-window 60 --breakout-window 120 --benchmark-ma 120 --start 20150101",
+        "batch_backtest": "python scripts\\batch_alpha_v4_research_backtest_csv.py --market ALL --security-type stock --alpha-variant-list pure_momentum,simplified_trend_momentum,volatility_adjusted_momentum,breakout_momentum --momentum-window-list 60,120,250 --trend-ma-list 120,250 --vol-window-list 60,120 --breakout-window-list 60,120,250 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --start 20150101 --sample-mode short --workers 10",
+        "walk_forward": "python scripts\\validate_alpha_v4_research_candidates.py --market ALL --security-type stock --first-test-year 2021 --last-test-year 2025 --portfolio-size 20 --alpha-variant-list pure_momentum,simplified_trend_momentum,volatility_adjusted_momentum,breakout_momentum --momentum-window-list 60,120,250 --trend-ma-list 120,250 --vol-window-list 60,120 --breakout-window-list 60,120,250 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --workers 10 --progress-every 100",
+        "analysis": "python scripts\\analyze_alpha_v4_research_walk_forward_results.py --input-tag alpha_v4_ALL_stock_ts20150101_fy2021-2025_avall4_mw60-250x3_tm120-250x2_vw60-120x2_bw60-250x3_bm3_bma120-250x2_top20_all_hbf272b37",
+        "diagnosis": "python scripts\\diagnose_alpha_v4_research_strategy_results.py --run-id exp004_alpha_v4_full --input-tag alpha_v4_ALL_stock_ts20150101_fy2021-2025_avall4_mw60-250x3_tm120-250x2_vw60-120x2_bw60-250x3_bm3_bma120-250x2_top20_all_hbf272b37",
+        "robustness": "python scripts\\validate_alpha_v4_robustness.py --input-tag alpha_v4_ALL_stock_ts20150101_fy2021-2025_avall4_mw60-250x3_tm120-250x2_vw60-120x2_bw60-250x3_bm3_bma120-250x2_top20_all_hbf272b37 --run-id exp004_alpha_v4_full",
+        "portfolio_backtest": "python scripts\\portfolio_backtest_csv.py --input-tag alpha_v4_ALL_stock_ts20150101_fy2021-2025_avall4_mw60-250x3_tm120-250x2_vw60-120x2_bw60-250x3_bm3_bma120-250x2_top20_all_hbf272b37 --run-id exp004_alpha_v4_full_smoke"
+      },
+      "outputs": {
+        "single_symbol_dir": "backtests/alpha_v4_research_strategy_csv",
+        "batch_dir": "backtests/batch_alpha_v4_research_csv",
+        "walk_forward_dir": "backtests/walk_forward_alpha_v4_research_csv",
+        "walk_forward_input_tag": "alpha_v4_ALL_stock_ts20150101_fy2021-2025_avall4_mw60-250x3_tm120-250x2_vw60-120x2_bw60-250x3_bm3_bma120-250x2_top20_all_hbf272b37",
+        "analysis_dir": "backtests/walk_forward_alpha_v4_research_analysis",
+        "diagnosis_dir": "backtests/strategy_diagnosis/alpha_v4_research_diagnosis_exp004_alpha_v4_full",
+        "robustness_dir": "backtests/strategy_robustness/alpha_v4_robustness_exp004_alpha_v4_full",
+        "portfolio_backtest_dir": "backtests/portfolio_backtest_csv/portfolio_exp004_alpha_v4_full_smoke"
+      },
+      "key_results": {
+        "total_return": 0.3281,
+        "annual_return": 0.0608,
+        "max_drawdown": -0.1569,
+        "sharpe": 0.5812,
+        "benchmark_excess": {
+          "000300.SH": 0.4492,
+          "000905.SH": 0.1765,
+          "000852.SH": 0.2110
+        },
+        "exclude_2025_total_return": -0.0485,
+        "exclude_2025_sharpe": -0.1633,
+        "stable_variant_count": 0,
+        "stable_parameter_count": 4,
+        "train_score_test_return_corr": 0.1856,
+        "bad_contributor_count": 20,
+        "good_contributor_count": 25
+      },
+      "diagnosis_summary": {
+        "main_findings": [
+          "Full period: total return +32.81%, annual +6.08%, Sharpe 0.58 — headline metrics pass.",
+          "CRITICAL: Strategy is heavily dependent on 2025 (+39.58%). Excluding 2025, total return is -4.85% and Sharpe -0.16.",
+          "Leave-one-year-out: only exclude-2025 fails (1/5 = 20%), other years pass.",
+          "All 3 benchmarks beaten in all scenarios (CSI300, CSI500, CSI1000).",
+          "No stable alpha variant: all 3 variants (pure_momentum, simplified_trend_momentum, breakout_momentum) have win_rate < 0.5.",
+          "train_score → test_total_return correlation = 0.19, below 0.2 threshold.",
+          "Top contributor (300274.SZ) accounts for 33% of total contribution — concentration risk.",
+          "2025 single-year return (39.58%) exceeds full-period return (32.81%) — dominant year risk."
+        ],
+        "robustness_gates": {
+          "exclude_2025_positive_return": "FAIL",
+          "exclude_2025_sharpe_above_0.3": "FAIL",
+          "loyo_fail_rate_below_40pct": "PASS",
+          "stable_alpha_variant_exists": "FAIL",
+          "train_test_correlation_above_0.2": "FAIL",
+          "bad_contributors_not_dominant": "PASS",
+          "no_dominant_single_year": "FAIL"
+        },
+        "recommendation": "Revise alpha signal. Strategy shows strong 2025 dependency and lacks stable variants. Not viable for portfolio backtest.",
+        "proceed_to_portfolio_backtest": false,
+        "next_action": "Revise alpha signal to reduce 2025 dependency. Consider: (1) regime-agnostic signals, (2) multi-year train windows, (3) penalty for 2025-only alpha sources.",
+        "portfolio_backtest_note": "Portfolio backtest infrastructure smoke test completed using yearly selected_by_year rebalancing with lot-size, max-weight, commission and slippage constraints. Constrained: -2.96% total, -0.62% annual, Sharpe -0.02, MDD -55.57%. This is infrastructure validation only, not strategy promotion."
+      },
+      "decision": {
+        "decision": "revise_alpha_signal",
+        "reason": "Robustness validation failed 5/7 gates. Strategy is heavily 2025-dependent (total +32.81% but -4.85% without 2025). No stable alpha variant (0/3). train_score correlation with test_return is 0.19 (below 0.2). Single year (2025) dominates full return.",
+        "decided_at": "2026-05-18",
+        "owner": "user"
+      },
+      "notes": "Alpha v4 研究模块：测试 4 种 alpha variant（pure_momentum, simplified_trend_momentum, volatility_adjusted_momentum, breakout_momentum）。walk-forward full run 完成（2021-2025），headline 指标看起来不错（年化 6.08%，Sharpe 0.58），但稳健性验证暴露严重 2025 依赖问题。剔除 2025 后收益为负，无稳定 variant，train-test 相关性不足。需要 revise alpha 信号。"
+    },
+    {
+      "experiment_id": "exp_005_alpha_v5_signal_diversification",
+      "base_config": "alpha_research_base",
+      "status": "planned",
+      "strategy_family": "alpha_research",
+      "strategy_version": "v5",
+      "strategy_name": "Alpha v5 - signal diversification to reduce single-year dependency",
+      "hypothesis": "Alpha v4 失败根因是 4 个 variant 全部为动量类信号，高度同质化，导致 2025 年依赖。Alpha v5 测试 4 种信号多样化 variant：(1) momentum_reversion_blend 混合动量与均值回归，(2) adaptive_momentum 根据波动率自适应调整动量窗口，(3) multi_timeframe_momentum 多时间尺度动量组合，(4) volatility_regime_momentum 按波动率状态切换动量/均值回归。预期减少单一年份依赖，提高 train-test 一致性和 variant 稳定性。",
+      "signal_definition": {
+        "entry_signal": "variant-specific: momentum_reversion_blend always holds (ranking-based); adaptive_momentum uses adaptive_window momentum > 0; multi_timeframe_momentum uses mom_60 > 0 AND mom_120 > 0; volatility_regime_momentum switches between mean-reversion (high-vol) and momentum (low-vol)",
+        "exit_signal": "alpha_signal = 0 OR market_filter = 0",
+        "market_filter": "benchmark_ma_short > benchmark_ma_long (regime filter, same as Alpha v4)",
+        "ranking_metric": "alpha_score = normalize(variant-specific raw_alpha_score)",
+        "portfolio_construction": "annual walk-forward selection, top N equal-weight daily return aggregation"
+      },
+      "parameters": {
+        "alpha_variant_list": ["momentum_reversion_blend", "adaptive_momentum", "multi_timeframe_momentum", "volatility_regime_momentum"],
+        "momentum_window_list": [60, 120, 250],
+        "reversion_window_list": [10, 20, 40],
+        "mom_short_list": [60, 120],
+        "mom_mid_list": [120],
+        "mom_long_list": [250],
+        "vol_window_list": [60, 120]
+      },
+      "commands": {
+        "single_symbol_check": "python strategies\\alpha_v5_research_strategy_csv.py --stock 000001.SZ --benchmark 000300.SH --alpha-variant momentum_reversion_blend --momentum-window 120 --reversion-window 20 --mom-short 60 --mom-mid 120 --mom-long 250 --vol-window 60 --benchmark-ma 120 --start 20150101",
+        "batch_backtest": "python scripts\\batch_alpha_v5_research_backtest_csv.py --market ALL --security-type stock --alpha-variant-list momentum_reversion_blend,adaptive_momentum,multi_timeframe_momentum,volatility_regime_momentum --momentum-window-list 60,120,250 --reversion-window-list 10,20,40 --mom-short-list 60,120 --mom-mid-list 120 --mom-long-list 250 --vol-window-list 60,120 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --start 20150101 --sample-mode short --workers 10",
+        "walk_forward": "python scripts\\validate_alpha_v5_research_candidates.py --market ALL --security-type stock --first-test-year 2021 --last-test-year 2025 --portfolio-size 20 --alpha-variant-list momentum_reversion_blend,adaptive_momentum,multi_timeframe_momentum,volatility_regime_momentum --momentum-window-list 60,120,250 --reversion-window-list 10,20,40 --mom-short-list 60,120 --mom-mid-list 120 --mom-long-list 250 --vol-window-list 60,120 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --workers 10 --progress-every 100",
+        "analysis": "python scripts\\analyze_alpha_v5_research_walk_forward_results.py",
+        "diagnosis": "python scripts\\diagnose_alpha_v5_research_strategy_results.py --run-id exp005_alpha_v5_full",
+        "robustness": "python scripts\\validate_alpha_v5_robustness.py --run-id exp005_alpha_v5_full",
+        "portfolio_backtest": "python scripts\\portfolio_backtest_csv.py --run-id exp005_alpha_v5_full"
+      },
+      "outputs": {
+        "single_symbol_dir": "backtests/alpha_v5_research_strategy_csv",
+        "batch_dir": "backtests/batch_alpha_v5_research_csv",
+        "walk_forward_dir": "backtests/walk_forward_alpha_v5_research_csv",
+        "analysis_dir": "backtests/walk_forward_alpha_v5_research_analysis",
+        "diagnosis_dir": "backtests/strategy_diagnosis/alpha_v5_research_diagnosis_exp005_alpha_v5_full",
+        "robustness_dir": "backtests/strategy_robustness/alpha_v5_robustness_exp005_alpha_v5_full",
+        "portfolio_backtest_dir": "backtests/portfolio_backtest_csv/portfolio_exp005_alpha_v5_full"
+      },
+      "decision": {
+        "decision": "continue",
+        "reason": "Alpha v4 robustness failed 6/7 gates due to single-year (2025) dependency. Alpha v5 tests signal diversification hypothesis with 4 new variants blending momentum, mean-reversion, and adaptive signals.",
+        "decided_at": "2026-06-01",
+        "owner": "user"
+      },
+      "notes": "Alpha v5 信号多样化研究。基于 Alpha v4 诊断结论设计，核心改动：(1) momentum_reversion_blend 混合动量与均值回归降低单因子依赖，(2) adaptive_momentum 自适应窗口应对不同波动率环境，(3) multi_timeframe_momentum 多尺度一致性提高稳定性，(4) volatility_regime_momentum 按市场状态切换信号逻辑。预期解决 v4 的 2025 依赖和 variant 不稳定问题。"
+    },
+    {
+      "experiment_id": "exp_006_alpha_v6_non_momentum_signals",
+      "base_config": "alpha_research_base",
+      "status": "planned",
+      "strategy_family": "alpha_research",
+      "strategy_version": "v6",
+      "strategy_name": "Alpha v6 - non-momentum alpha sources (reversal, volatility, turnover, volume-price)",
+      "hypothesis": "Alpha v4/v5 失败根因是所有 variant 都是动量类信号，只是包装方式不同。Alpha v6 使用 4 种真正不同的 alpha 来源：(1) short_term_reversal 短期反转效应，(2) low_volatility 低波动异象，(3) turnover_reversal 换手率反转，(4) volume_price_divergence 量价背离。这些信号与动量低相关，预期在非动量年份也能产生正收益，解决 2025 依赖问题。",
+      "signal_definition": {
+        "entry_signal": "variant-specific: short_term_reversal buys recent losers; low_volatility always holds low-vol stocks; turnover_reversal buys stocks with declining turnover; volume_price_divergence buys when price rises but volume falls",
+        "exit_signal": "alpha_signal = 0 OR market_filter = 0",
+        "market_filter": "benchmark_ma_short > benchmark_ma_long (regime filter, same as v4/v5)",
+        "ranking_metric": "alpha_score = normalize(variant-specific raw_alpha_score)",
+        "portfolio_construction": "annual walk-forward selection, top N equal-weight daily return aggregation"
+      },
+      "parameters": {
+        "alpha_variant_list": ["short_term_reversal", "low_volatility", "turnover_reversal", "volume_price_divergence"],
+        "reversal_window_list": [5, 10, 20],
+        "vol_window_list": [20, 60, 120],
+        "turnover_short_list": [10],
+        "turnover_long_list": [60],
+        "divergence_window_list": [10, 20, 60]
+      },
+      "commands": {
+        "single_symbol_check": "python strategies\\alpha_v6_research_strategy_csv.py --stock 000001.SZ --benchmark 000300.SH --alpha-variant short_term_reversal --reversal-window 10 --vol-window 60 --turnover-short 10 --turnover-long 60 --divergence-window 20 --benchmark-ma 120 --start 20150101",
+        "batch_backtest": "python scripts\\batch_alpha_v6_research_backtest_csv.py --market ALL --security-type stock --alpha-variant-list short_term_reversal,low_volatility,turnover_reversal,volume_price_divergence --reversal-window-list 5,10,20 --vol-window-list 20,60,120 --turnover-short-list 10 --turnover-long-list 60 --divergence-window-list 10,20,60 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --start 20150101 --sample-mode short --workers 10",
+        "walk_forward": "python scripts\\validate_alpha_v6_research_candidates.py --market ALL --security-type stock --first-test-year 2021 --last-test-year 2025 --portfolio-size 20 --alpha-variant-list short_term_reversal,low_volatility,turnover_reversal,volume_price_divergence --reversal-window-list 5,10,20 --vol-window-list 20,60,120 --turnover-short-list 10 --turnover-long-list 60 --divergence-window-list 10,20,60 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --workers 10 --progress-every 100",
+        "analysis": "python scripts\\analyze_alpha_v6_research_walk_forward_results.py",
+        "diagnosis": "python scripts\\diagnose_alpha_v6_research_strategy_results.py --run-id exp006_alpha_v6_full",
+        "robustness": "python scripts\\validate_alpha_v6_robustness.py --run-id exp006_alpha_v6_full",
+        "portfolio_backtest": "python scripts\\portfolio_backtest_csv.py --run-id exp006_alpha_v6_full"
+      },
+      "outputs": {
+        "single_symbol_dir": "backtests/alpha_v6_research_strategy_csv",
+        "batch_dir": "backtests/batch_alpha_v6_research_csv",
+        "walk_forward_dir": "backtests/walk_forward_alpha_v6_research_csv",
+        "analysis_dir": "backtests/walk_forward_alpha_v6_research_analysis",
+        "diagnosis_dir": "backtests/strategy_diagnosis/alpha_v6_research_diagnosis_exp006_alpha_v6_full",
+        "robustness_dir": "backtests/strategy_robustness/alpha_v6_robustness_exp006_alpha_v6_full",
+        "portfolio_backtest_dir": "backtests/portfolio_backtest_csv/portfolio_exp006_alpha_v6_full"
+      },
+      "decision": {
+        "decision": "continue",
+        "reason": "Alpha v4/v5 both failed due to 2025 dependency from momentum-only variants. Alpha v6 uses genuinely different alpha sources (reversal, volatility, turnover, volume-price) that are structurally low-correlated with momentum.",
+        "decided_at": "2026-06-02",
+        "owner": "user"
+      },
+      "notes": "Alpha v6 非动量信号研究。基于 v4/v5 诊断结论：所有 variant 都是动量类信号导致 2025 依赖。v6 使用 4 种真正不同的 alpha 来源：(1) short_term_reversal 短期反转（与动量负相关），(2) low_volatility 低波动异象（防御性收益），(3) turnover_reversal 换手率反转（抛压减少信号），(4) volume_price_divergence 量价背离（无卖盘推动的上涨）。"
+    },
+    {
+      "experiment_id": "exp_007_alpha_v7_expression_layer",
+      "status": "planned",
+      "base_config": "alpha_research_base",
+      "strategy_family": "alpha_research",
+      "strategy_version": "v7",
+      "strategy_name": "Alpha v7 - expression layer based alpha research (UGQlib)",
+      "hypothesis": "Alpha v6 的 4 类非动量信号通过 UGQlib feature_expression 表达式层可组合、可登记、可复用。Alpha v7 使用表达式层计算信号（不再硬编码 compute_alpha_v6_signals），支持从 configs/factor_registry.json 读取因子定义，并集成 --evaluate-signals 信号评估开关。信号口径与 Alpha v6 完全一致（rtol=1e-10），验证表达式层的正确性后，为后续扩展更多因子和 ML 管线打下基础。",
+      "signal_definition": {
+        "entry_signal": "expression-based: same 4 variants as Alpha v6 (short_term_reversal, low_volatility, turnover_reversal, volume_price_divergence) computed via feature_expression.py",
+        "exit_signal": "alpha_signal = 0 OR market_filter = 0",
+        "market_filter": "benchmark_ma_short > benchmark_ma_long (regime filter, same as v6)",
+        "ranking_metric": "alpha_score = normalize_zscore(raw_alpha_score) via expression layer",
+        "portfolio_construction": "annual walk-forward selection, top N equal-weight daily return aggregation"
+      },
+      "universe": {
+        "market": "ALL",
+        "security_type": "stock",
+        "data_source": "QMT CSV export",
+        "export_root": "data/qmt_export"
+      },
+      "date_range": {
+        "train_start": "20150101",
+        "first_test_year": 2021,
+        "last_test_year": 2025,
+        "incomplete_year": 2026
+      },
+      "parameters": {
+        "alpha_variant_list": ["short_term_reversal", "low_volatility", "turnover_reversal", "volume_price_divergence"],
+        "reversal_window_list": [5, 10, 20],
+        "vol_window_list": [20, 60, 120],
+        "turnover_short_list": [10],
+        "turnover_long_list": [60],
+        "divergence_window_list": [10, 20, 60],
+        "benchmark_list": ["000300.SH", "000905.SH", "000852.SH"],
+        "benchmark_ma_list": [120, 250],
+        "portfolio_size": 20,
+        "min_train_rows": 1000,
+        "min_train_trades": 4,
+        "max_train_drawdown": -0.55,
+        "min_train_sharpe": 0.2,
+        "min_train_annual_return": 0.02,
+        "train_excess_mode": "stock_only",
+        "allow_negative_train_excess": false
+      },
+      "cost_model": {
+        "cash": 1000000,
+        "commission": 0.0001,
+        "sell_tax": 0.0005,
+        "slippage": 0.0
+      },
+      "commands": {
+        "single_symbol_check": "python strategies\\alpha_v7_research_strategy_csv.py --stock 000001.SZ --benchmark 000300.SH --alpha-variant short_term_reversal --reversal-window 10 --vol-window 60 --benchmark-ma 120 --start 20150101",
+        "batch_backtest": "python scripts\\batch_alpha_v7_research_backtest_csv.py --market ALL --security-type stock --alpha-variant-list short_term_reversal,low_volatility,turnover_reversal,volume_price_divergence --reversal-window-list 5,10,20 --vol-window-list 20,60,120 --turnover-short-list 10 --turnover-long-list 60 --divergence-window-list 10,20,60 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --start 20150101 --sample-mode short --workers 10",
+        "walk_forward": "python scripts\\validate_alpha_v7_research_candidates.py --market ALL --security-type stock --first-test-year 2021 --last-test-year 2025 --portfolio-size 20 --alpha-variant-list short_term_reversal,low_volatility,turnover_reversal,volume_price_divergence --reversal-window-list 5,10,20 --vol-window-list 20,60,120 --turnover-short-list 10 --turnover-long-list 60 --divergence-window-list 10,20,60 --benchmark-list 000300.SH,000905.SH,000852.SH --benchmark-ma-list 120,250 --workers 10 --progress-every 100",
+        "analysis": "python scripts\\analyze_alpha_v7_research_walk_forward_results.py --input-dir backtests/walk_forward_alpha_v7_research_csv --no-png",
+        "diagnosis": "python scripts\\diagnose_alpha_v7_research_strategy_results.py --run-id exp007_alpha_v7_full --input-dir backtests/walk_forward_alpha_v7_research_csv --analysis-dir backtests/walk_forward_alpha_v7_research_analysis --no-png",
+        "robustness": "python scripts\\validate_alpha_v7_robustness.py --input-tag ALL --run-id exp007_alpha_v7_full --walk-forward-dir backtests/walk_forward_alpha_v7_research_csv --no-png",
+        "signal_evaluation": "python scripts\\evaluate_alpha_signals.py --experiment-id exp_007_alpha_v7_expression_layer --alpha-variant all --start 20150101",
+        "portfolio_backtest": "python scripts\\portfolio_backtest_csv.py --input-tag ALL --walk-forward-dir backtests/walk_forward_alpha_v7_research_csv --file-prefix wf_alpha_v7_stock --run-id exp007_alpha_v7_full --no-png"
+      },
+      "outputs": {
+        "single_symbol_dir": "backtests/alpha_v7_research_strategy_csv",
+        "signal_evaluation_dir": "backtests/signal_evaluation/exp_007_alpha_v7_expression_layer",
+        "batch_dir": "backtests/batch_alpha_v7_research_csv",
+        "walk_forward_dir": "backtests/walk_forward_alpha_v7_research_csv",
+        "analysis_dir": "backtests/walk_forward_alpha_v7_research_analysis",
+        "diagnosis_dir": "backtests/strategy_diagnosis/alpha_v7_diagnosis_exp007_alpha_v7_full",
+        "robustness_dir": "backtests/strategy_robustness/alpha_v7_robustness_exp007_alpha_v7_full",
+        "portfolio_backtest_dir": "backtests/portfolio_backtest_csv/portfolio_exp007_alpha_v7_full",
+        "model_training_dir": "backtests/model_prediction/exp_007_alpha_v7_expression_layer"
+      },
+      "task": {
+        "data": {
+          "handler": "QMTDataHandler",
+          "universe": "ALL",
+          "start": "20150101"
+        },
+        "features": {
+          "factor_set_id": "alpha_v7_core"
+        },
+        "labels": {
+          "horizons": [1, 5, 20]
+        },
+        "signal": {
+          "type": "rule",
+          "variants": ["short_term_reversal", "low_volatility", "turnover_reversal", "volume_price_divergence"]
+        },
+        "walk_forward": {
+          "first_test_year": 2021,
+          "last_test_year": 2025,
+          "portfolio_size": 20
+        },
+        "evaluation": {
+          "signal_ic": true
+        },
+        "backtest": {
+          "cost_model": "a_share_default"
+        },
+        "model_training": {
+          "feature_matrix": "factors/processed/feature_matrix/alpha_v7_core/feature_matrix.parquet",
+          "alpha_variant": "short_term_reversal",
+          "label_col": "label/ret_1d",
+          "test_years": [2021, 2022, 2023, 2024, 2025],
+          "zscore_pred": true
+        },
+        "records": [
+          "SignalEvaluationRecord",
+          "WalkForwardRecord",
+          "DiagnosisRecord",
+          "RobustnessRecord"
+        ]
+      },
+      "decision": {
+        "decision": "continue",
+        "reason": "Alpha v7 使用 UGQlib 表达式层替代硬编码信号计算。信号口径与 Alpha v6 完全一致（已通过 28 个测试验证 rtol=1e-10）。本轮完成实验注册和单标的冒烟测试，后续需创建 v7 版 batch/walk-forward 脚本以接入完整 D's_Flow pipeline。",
+        "decided_at": "2026-06-07",
+        "owner": "user"
+      },
+      "notes": "Alpha v7 是 UGQlib 新接口的首个策略实验。核心改进：(1) 信号计算使用 feature_expression.py 表达式层，(2) 因子定义可从 factor_registry.json 读取，(3) 支持 --evaluate-signals 信号评估开关。信号口径与 v6 完全一致，验证表达式层正确性。后续需创建 batch_alpha_v7_research_backtest_csv.py 和 validate_alpha_v7_research_candidates.py 以接入完整 pipeline。"
+    }
+  ]
+}
